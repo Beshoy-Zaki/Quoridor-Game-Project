@@ -51,3 +51,52 @@ FONT_BIG = 26
 FONT_MED = 19
 FONT_SMALL = 15
 FPS = 60
+
+def logical_to_screen(row, col):
+    sx = MARGIN + OFFSETS[col]
+    sy = MARGIN + OFFSETS[row]
+    return sx, sy
+
+
+def logical_size(row_or_col):
+    return CELL_SIZE if row_or_col % 2 == 0 else GAP_SIZE
+
+
+def cell_center(row, col):
+    sx, sy = logical_to_screen(row, col)
+    cx = sx + CELL_SIZE // 2
+    cy = sy + CELL_SIZE // 2
+    return cx, cy
+
+
+def screen_to_logical(px, py):
+    bx = px - MARGIN
+    by = py - MARGIN
+
+    if bx < 0 or by < 0 or bx >= BOARD_PX or by >= BOARD_PX:
+        return None
+
+    col = _find_logical_index(bx)
+    row = _find_logical_index(by)
+
+    if col is None or row is None:
+        return None
+
+    return row, col
+
+
+def _find_logical_index(pixel_offset):
+    for i in range(17):
+        size = CELL_SIZE if i % 2 == 0 else GAP_SIZE
+        if OFFSETS[i] <= pixel_offset < OFFSETS[i] + size:
+            return i
+    return None
+
+
+def snap_wall_center(row, col):
+    wr = row if row % 2 == 1 else row - 1
+    wc = col if col % 2 == 1 else col - 1
+
+    if not (1 <= wr <= 15 and 1 <= wc <= 15):
+        return None
+    return wr, wc
