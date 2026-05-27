@@ -100,3 +100,46 @@ def snap_wall_center(row, col):
     if not (1 <= wr <= 15 and 1 <= wc <= 15):
         return None
     return wr, wc
+
+
+def draw_board_background(surface):
+    board_rect = pygame.Rect(
+        MARGIN - 6, MARGIN - 6, BOARD_PX + 12, BOARD_PX + 12
+    )
+    pygame.draw.rect(surface, C_BOARD_BG, board_rect, border_radius=6)
+
+
+def draw_cells(surface):
+    for row in range(0, 17, 2):
+        for col in range(0, 17, 2):
+            sx, sy = logical_to_screen(row, col)
+            cell_rect = pygame.Rect(sx, sy, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(surface, C_CELL, cell_rect, border_radius=3)
+            pygame.draw.rect(surface, C_CELL_BORDER, cell_rect, width=1, border_radius=3)
+
+
+def draw_row_col_labels(surface, font_small):
+    cell_num = 0
+    for col in range(0, 17, 2):
+        sx, _ = logical_to_screen(0, col)
+        label = font_small.render(str(cell_num), True, C_TEXT_DIM)
+        surface.blit(label, (sx + CELL_SIZE // 2 - label.get_width() // 2, MARGIN - 20))
+        cell_num += 1
+
+    cell_num = 0
+    for row in range(0, 17, 2):
+        _, sy = logical_to_screen(row, 0)
+        label = font_small.render(str(cell_num), True, C_TEXT_DIM)
+        surface.blit(label, (MARGIN - 22, sy + CELL_SIZE // 2 - label.get_height() // 2))
+        cell_num += 1
+
+
+def draw_placed_walls(surface, board):
+    for row in range(17):
+        for col in range(17):
+            if board[row][col] == 1:
+                sx, sy = logical_to_screen(row, col)
+                w = logical_size(col)
+                h = logical_size(row)
+                wall_rect = pygame.Rect(sx, sy, w, h)
+                pygame.draw.rect(surface, C_WALL_PLACED, wall_rect, border_radius=2)
