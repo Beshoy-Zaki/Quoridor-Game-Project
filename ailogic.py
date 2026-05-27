@@ -187,3 +187,76 @@ class QuoridorAI:
             self._tt[key] = (value, flag, depth)
 
         return value
+
+    def _state_key(self, game, maximizing_player):
+        # FIX 4 continued: depth removed from key
+        board_key = tuple(tuple(row) for row in game.board)
+        return (
+            board_key,
+            game.p1_pos,
+            game.p2_pos,
+            game.p1_walls,
+            game.p2_walls,
+            game.current_turn,
+            maximizing_player,
+        )
+
+    def _generate_moves(self, game, use_walls=True):
+        moves = [("pawn", move) for move in game.get_legal_pawn_moves(game.current_turn)]
+        if not use_walls:
+            return moves
+
+        if (game.current_turn == 1 and game.p1_walls <= 0) or (
+            game.current_turn == 2 and game.p2_walls <= 0
+        ):
+            return moves
+
+        candidates = self._candidate_walls(game)
+        for r, c in candidates:
+            for orient in ("H", "V"):
+                if self._is_valid_wall(game, r, c, orient):
+                    moves.append(("wall", (r, c, orient)))
+        return moves
+
+    def _candidate_walls(self, game, limit=12):
+        opp_pos    = game.p1_pos if game.current_turn == 2 else game.p2_pos
+        candidates = set()
+        for dr in range(-4, 5):
+            for dc in range(-4, 5):
+                r = opp_pos[0] + dr
+                c = opp_pos[1] + dc
+                if 0 <= r < 17 and 0 <= c < 17 and r % 2 == 1 and c % 2 == 1:
+                    candidates.add((r, c))
+
+        if len(candidates) < limit:
+            for r in range(1, 16, 2):
+                for c in range(1, 16, 2):
+                    candidates.add((r, c))
+
+        candidates = list(candidates)
+        random.shuffle(candidates)
+        return candidates[:limit]
+
+    def _is_valid_wall(self, game, r, c, orient):
+        if r % 2 == 0 or c % 2 == 0:
+            return False
+        cells = (
+            [(r, c - 1), (r, c), (r, c + 1)]
+            if orient == "H"
+            else [(r - 1, c), (r, c), (r + 1, c)]
+        )
+        for rr, cc in cells:
+            if not (0 <= rr < 17 and 0 <= cc < 17) or game.board[rr][cc] == 1:
+                return False
+
+        for rr, cc in cells:
+            game.board[rr][cc] = 1
+
+        has_path = game._has_path(game.p1_pos, game.p1_goal_row) and game._has_path(
+            game.p2_pos, game.p2_goal_row
+        )
+
+        for rr, cc in cells:
+            game.board[rr][cc] = 0
+
+        return has_path
