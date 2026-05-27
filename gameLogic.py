@@ -1,4 +1,8 @@
 import collections
+import os
+import random
+
+from ailogic import QuoridorAI
 
 class QuoridorEngine:
     def __init__(self, mode='multiplayer'):
@@ -149,3 +153,69 @@ class QuoridorEngine:
                     visited.add((tr, tc))
                     queue.append((tr, tc))
         return False
+        
+def render_board(game):
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print(f"--- QUORIDOR [{game.mode.upper()} MODE] ---")
+    print(f"P1 Walls: {game.p1_walls} | P2 Walls: {game.p2_walls}")
+    print(f"Current Turn: Player {game.current_turn}\n")
+    header = "    " + " ".join([f"{i:2}" for i in range(17)])
+    print(header)
+    for r in range(17):
+        row_str = f"{r:2} |"
+        for c in range(17):
+            if (r, c) == game.p1_pos: row_str += " P1"
+            elif (r, c) == game.p2_pos: row_str += " P2"
+            elif game.board[r][c] == 1: row_str += " ##"
+            elif r % 2 == 0 and c % 2 == 0: row_str += "  ."
+            else: row_str += "   "
+        print(row_str)
+ 
+def main():
+    print("Welcome to Quoridor!")
+    mode_choice = input("Select Mode: (1) Single Player (vs Random AI) (2) Multi-Player: ")
+    mode = 'single' if mode_choice == '1' else 'multiplayer'
+    game = QuoridorEngine(mode=mode)
+    ai = QuoridorAI(ai_id=2) if mode == 'single' else None
+    difficulty = "medium"
+    if mode == 'single':
+        difficulty = input("Select AI Difficulty: (easy/medium/hard/extreme): ").strip().lower()
+        if difficulty not in {"easy", "medium", "hard", "extreme"}:
+            difficulty = "medium"
+ 
+    while not game.game_over:
+        render_board(game)
+        # AI turn for Single Player
+        if game.mode == 'single' and game.current_turn == 2:
+            print("AI is thinking...")
+            move = ai.get_best_move(game, difficulty=difficulty)
+            if move is None:
+                moves = game.get_legal_pawn_moves(2)
+                if moves:
+                    game.move_pawn(*random.choice(moves))
+            else:
+                kind, payload = move
+                if kind == "pawn":
+                    game.move_pawn(*payload)
+                elif kind == "wall":
+                    r, c, orient = payload
+                    game.place_wall(r, c, orient)
+            continue
+ 
+        action = input("\nChoose: (M)ove or (W)all: ").upper()
+        try:
+            if action == 'M':
+                r, c = map(int, input("Enter coordinates row col (e.g. 14 8): ").split())
+                if not game.move_pawn(r, c): print("Invalid Move!")
+            elif action == 'W':
+                r, c = map(int, input("Enter center row col (must be odd): ").split())
+                o = input("Orientation (H/V): ").upper()
+                if not game.place_wall(r, c, o): print("Invalid Wall Placement!")
+        except ValueError:
+            print("Please enter numbers only.")
+ 
+    render_board(game)
+    print(f"\nGAME OVER! Player {game.winner} wins!")
+ 
+if __name__ == "__main__":
+    main()
