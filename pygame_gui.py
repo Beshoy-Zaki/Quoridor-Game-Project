@@ -143,3 +143,28 @@ def draw_placed_walls(surface, board):
                 h = logical_size(row)
                 wall_rect = pygame.Rect(sx, sy, w, h)
                 pygame.draw.rect(surface, C_WALL_PLACED, wall_rect, border_radius=2)
+
+def draw_highlights(surface, legal_moves):
+    for (row, col) in legal_moves:
+        cx, cy = cell_center(row, col)
+        pygame.draw.circle(surface, C_HIGHLIGHT, (cx, cy), CELL_SIZE // 5)
+        pygame.draw.circle(surface, C_BG, (cx, cy), CELL_SIZE // 5 - 4)
+        pygame.draw.circle(surface, C_HIGHLIGHT, (cx, cy), CELL_SIZE // 5, width=3)
+
+
+def draw_pawn(surface, row, col, colour, label):
+    cx, cy = cell_center(row, col)
+    radius = CELL_SIZE // 2 - 6
+
+    shadow_offset = 3
+    pygame.draw.circle(surface, (15, 15, 15), (cx + shadow_offset, cy + shadow_offset), radius)
+
+    pygame.draw.circle(surface, colour, (cx, cy), radius)
+
+    shine_x = cx - radius // 3
+    shine_y = cy - radius // 3
+    pygame.draw.circle(surface, _lighten(colour, 60), (shine_x, shine_y), radius // 4)
+
+    font = pygame.font.SysFont("Arial", FONT_MED, bold=True)
+    txt = font.render(label, True, (255, 255, 255))
+    surface.blit(txt, (cx - txt.get_width() // 2, cy - txt.get_height() // 2))
