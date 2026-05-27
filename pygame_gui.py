@@ -1,0 +1,53 @@
+import sys
+import pygame
+
+from gameLogic import QuoridorEngine
+from ailogic import QuoridorAI
+
+CELL_SIZE = 58
+GAP_SIZE = 12
+MARGIN = 30
+SIDEBAR_W = 220
+def _build_offsets():
+    offsets = [0] * 17
+    for i in range(1, 17):
+        prev_size = CELL_SIZE if (i - 1) % 2 == 0 else GAP_SIZE
+        offsets[i] = offsets[i - 1] + prev_size
+    return offsets
+
+
+OFFSETS = _build_offsets()
+BOARD_PX = OFFSETS[16] + CELL_SIZE
+WIN_W = MARGIN * 2 + BOARD_PX + SIDEBAR_W
+WIN_H = MARGIN * 2 + BOARD_PX
+
+C_BG = (30, 30, 35)
+C_BOARD_BG = (45, 38, 30)
+C_CELL = (62, 50, 38)
+C_CELL_BORDER = (80, 65, 50)
+C_HIGHLIGHT = (120, 210, 80)
+C_HIGHLIGHT_A = (80, 160, 50, 140)
+C_P1 = (220, 80, 60)
+C_P2 = (60, 140, 220)
+C_WALL_PLACED = (210, 175, 80)
+C_WALL_GHOST = (210, 175, 80, 100)
+C_WALL_BAD = (210, 60, 60, 120)
+C_SIDEBAR_BG = (22, 22, 28)
+C_TEXT_MAIN = (230, 225, 215)
+C_TEXT_DIM = (130, 120, 110)
+C_P1_TEXT = (240, 110, 90)
+C_P2_TEXT = (90, 170, 240)
+C_BTN_BG = (55, 55, 65)
+C_BTN_HOVER = (75, 75, 90)
+C_BTN_TEXT = (210, 210, 220)
+C_WIN_BG = (25, 50, 30)
+C_WIN_TEXT = (160, 240, 130)
+C_ERROR_TEXT = (230, 80, 80)
+C_TURN_BAR_P1 = (80, 30, 25)
+C_TURN_BAR_P2 = (20, 45, 80)
+C_WALL_MODE = (200, 160, 50)
+
+FONT_BIG = 26
+FONT_MED = 19
+FONT_SMALL = 15
+FPS = 60
