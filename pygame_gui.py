@@ -430,3 +430,317 @@ def get_ai_move(game, difficulty, ai):
 
     r, c, orient = payload
     return ("wall", r, c, orient)
+
+def run_menu(screen, fonts):
+    font_big, font_med, font_small = fonts
+    clock = pygame.time.Clock()
+
+    btn_w, btn_h = 260, 48
+    cx = WIN_W // 2
+
+    def make_btn(label, y):
+        rect = pygame.Rect(cx - btn_w // 2, y, btn_w, btn_h)
+        return rect, label
+
+    buttons = [
+        make_btn("Human vs Human", 200),
+        make_btn("vs AI  -  Easy", 268),
+        make_btn("vs AI  -  Medium", 336),
+        make_btn("vs AI  -  Hard", 404),
+        make_btn("vs AI  -  Extreme", 472),
+    ]
+
+    while True:
+        screen.fill(C_BG)
+        mouse_pos = pygame.mouse.get_pos()
+
+        title1 = font_big.render("QUORIDOR", True, C_TEXT_MAIN)
+        title2 = font_small.render("CSE472s  Spring 2026  |  Team Project", True, C_TEXT_DIM)
+        screen.blit(title1, (cx - title1.get_width() // 2, 120))
+        screen.blit(title2, (cx - title2.get_width() // 2, 155))
+
+        subtitle = font_med.render("Select Game Mode", True, C_TEXT_DIM)
+        screen.blit(subtitle, (cx - subtitle.get_width() // 2, 175))
+
+        for rect, label in buttons:
+            colour = C_BTN_HOVER if rect.collidepoint(mouse_pos) else C_BTN_BG
+            pygame.draw.rect(screen, colour, rect, border_radius=8)
+            txt = font_med.render(label, True, C_BTN_TEXT)
+            screen.blit(
+                txt,
+                (rect.x + (rect.w - txt.get_width()) // 2, rect.y + (rect.h - txt.get_height()) // 2),
+            )
+
+        footer = font_small.render("Click a button to start", True, C_TEXT_DIM)
+        screen.blit(footer, (cx - footer.get_width() // 2, WIN_H - 40))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None, None
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for i, (rect, _) in enumerate(buttons):
+                    if rect.collidepoint(event.pos):
+                        if i == 0:
+                            return "multiplayer", None
+                        if i == 1:
+                            return "single", "easy"
+                        if i == 2:
+                            return "single", "medium"
+                        if i == 3:
+                            return "single", "hard"
+                        return "single", "extreme"
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def run_game(screen, fonts, mode, difficulty):
+    font_big, font_med, font_small = fonts
+    clock = pygame.time.Clock()
+
+    game = QuoridorEngine(mode=mode)
+    ai = QuoridorAI(ai_id=2) if mode == "single" else None
+
+    wall_mode = False
+    wall_orient = None
+    error_msg = ""
+    error_timer = 0
+    legal_moves = game.get_legal_pawn_moves(game.current_turn)
+
+    while True:
+        clock.tick(FPS)
+        mouse_pos = pygame.mouse.get_pos()
+
+        if mode == "single" and game.current_turn == 2 and not game.game_over:
+            pygame.display.set_caption("Quoridor  |  AI is thinking…")
+            _render_frame(
+                screen,
+                game,
+                mode,
+                difficulty,
+                error_msg,
+                wall_mode,
+                wall_orient,
+                None,
+                legal_moves,
+                fonts,
+            )
+            pygame.display.flip()
+
+            action = get_ai_move(game, difficulty, ai)
+            _apply_ai_action(game, action)
+            legal_moves = game.get_legal_pawn_moves(game.current_turn)
+            pygame.display.set_caption("Quoridor")
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return "menu"
+
+                if event.key == pygame.K_r:
+                    return "restart"
+
+                if event.key == pygame.K_z and (event.mod & pygame.KMOD_CTRL):
+                    if game.undo():
+                        if mode == "single" and game.current_turn == 2:
+                            game.undo()
+                        legal_moves = game.get_legal_pawn_moves(game.current_turn)
+                        error_msg = ""
+
+                if event.key == pygame.K_y and (event.mod & pygame.KMOD_CTRL):
+                    if game.redo():
+                        if mode == "single" and game.current_turn == 2:
+                            game.redo()
+                        legal_moves = game.get_legal_pawn_moves(game.current_turn)
+                        error_msg = ""
+
+                if event.key == pygame.K_w and not game.game_over:
+                    wall_mode = not wall_mode
+                    wall_orient = "H" if wall_mode else None
+                    legal_moves = game.get_legal_pawn_moves(game.current_turn)
+
+                if event.key == pygame.K_h and wall_mode:
+                    wall_orient = "H"
+                if event.key == pygame.K_v and wall_mode:
+                    wall_orient = "V"
+
+                if event.key == pygame.K_SPACE and wall_mode:
+                    wall_orient = "V" if wall_orient == "H" else "H"
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                btn_rects = _get_sidebar_btn_rects()
+                if btn_rects["restart"].collidepoint(mouse_pos):
+                    return "restart"
+                if btn_rects["undo"].collidepoint(mouse_pos):
+                    if game.undo():
+                        if mode == "single" and game.current_turn == 2:
+                            game.undo()
+                        legal_moves = game.get_legal_pawn_moves(game.current_turn)
+                        error_msg = ""
+                    continue
+                if btn_rects["redo"].collidepoint(mouse_pos):
+                    if game.redo():
+                        if mode == "single" and game.current_turn == 2:
+                            game.redo()
+                        legal_moves = game.get_legal_pawn_moves(game.current_turn)
+                        error_msg = ""
+                    continue
+
+                if game.game_over:
+                    continue
+
+                if mode == "single" and game.current_turn == 2:
+                    continue
+
+                if wall_mode and wall_orient:
+                    wc = get_hovered_wall_center(mouse_pos, wall_orient)
+                    if wc is not None:
+                        wr, wcol = wc
+                        success = game.place_wall(wr, wcol, wall_orient)
+                        if success:
+                            error_msg = ""
+                            legal_moves = game.get_legal_pawn_moves(game.current_turn)
+                        else:
+                            error_msg = "Invalid wall placement!"
+                            error_timer = 180
+                    else:
+                        error_msg = "Click on the board to place wall"
+                        error_timer = 120
+                else:
+                    clicked = get_clicked_pawn_cell(mouse_pos)
+                    if clicked is not None:
+                        row, col = clicked
+                        success = game.move_pawn(row, col)
+                        if success:
+                            error_msg = ""
+                            legal_moves = game.get_legal_pawn_moves(game.current_turn)
+                        else:
+                            error_msg = "Invalid move!"
+                            error_timer = 120
+                    else:
+                        result = screen_to_logical(mouse_pos[0], mouse_pos[1])
+                        if result is not None:
+                            error_msg = "Press W to enter wall mode"
+                            error_timer = 120
+
+        if error_timer > 0:
+            error_timer -= 1
+        else:
+            error_msg = ""
+
+        ghost_wall = None
+        if wall_mode and wall_orient and not game.game_over:
+            wc = get_hovered_wall_center(mouse_pos, wall_orient)
+            if wc is not None:
+                ghost_wall = (wc[0], wc[1], wall_orient)
+
+        _render_frame(
+            screen,
+            game,
+            mode,
+            difficulty,
+            error_msg,
+            wall_mode,
+            wall_orient,
+            ghost_wall,
+            legal_moves,
+            fonts,
+        )
+        pygame.display.flip()
+
+    return "menu"
+
+
+def _apply_ai_action(game, action):
+    if action[0] == "move":
+        _, r, c = action
+        game.move_pawn(r, c)
+    elif action[0] == "wall":
+        _, r, c, orient = action
+        success = game.place_wall(r, c, orient)
+        if not success:
+            moves = game.get_legal_pawn_moves(2)
+            if moves:
+                game.move_pawn(*moves[0])
+
+
+def _get_sidebar_btn_rects():
+    x = MARGIN * 2 + BOARD_PX + 15 - 5
+    return {
+        "undo": pygame.Rect(x, WIN_H - 144, (SIDEBAR_W - 24) // 2, 32),
+        "redo": pygame.Rect(x + (SIDEBAR_W - 24) // 2 + 4, WIN_H - 144, (SIDEBAR_W - 24) // 2, 32),
+        "restart": pygame.Rect(x, WIN_H - 96, SIDEBAR_W - 20, 38),
+    }
+
+
+def _render_frame(
+    screen,
+    game,
+    mode,
+    difficulty,
+    error_msg,
+    wall_mode,
+    wall_orient,
+    ghost_wall,
+    legal_moves,
+    fonts,
+):
+    screen.fill(C_BG)
+
+    draw_board_background(screen)
+    draw_cells(screen)
+    draw_goal_lines(screen)
+    draw_row_col_labels(screen, fonts[2])
+    draw_placed_walls(screen, game.board)
+
+    if not wall_mode and not game.game_over:
+        draw_highlights(screen, legal_moves)
+
+    if ghost_wall is not None:
+        wr, wc, orient = ghost_wall
+        legal_preview = is_wall_legal_preview(game, wr, wc, orient)
+        draw_ghost_wall(screen, wr, wc, orient, legal_preview)
+
+    draw_pawn(screen, game.p1_pos[0], game.p1_pos[1], C_P1, "1")
+    draw_pawn(screen, game.p2_pos[0], game.p2_pos[1], C_P2, "2")
+
+    draw_sidebar(
+        screen,
+        game,
+        mode,
+        difficulty,
+        error_msg,
+        wall_orient if wall_mode else None,
+        fonts,
+    )
+
+
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WIN_W, WIN_H))
+    pygame.display.set_caption("Quoridor  |  CSE472s")
+    fonts = make_fonts()
+
+    while True:
+        mode, difficulty = run_menu(screen, fonts)
+
+        if mode is None:
+            break
+
+        result = run_game(screen, fonts, mode, difficulty)
+
+        if result == "restart":
+            result = run_game(screen, fonts, mode, difficulty)
+            while result == "restart":
+                result = run_game(screen, fonts, mode, difficulty)
+
+    pygame.quit()
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()
