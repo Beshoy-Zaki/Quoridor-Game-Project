@@ -362,3 +362,71 @@ def draw_goal_lines(surface):
     sx1, _ = logical_to_screen(16, 16)
     goal_bot_rect = pygame.Rect(sx0 - 3, sy0 + CELL_SIZE - 1, sx1 - sx0 + CELL_SIZE + 6, 4)
     pygame.draw.rect(surface, C_P2, goal_bot_rect, border_radius=2)
+
+
+def get_clicked_pawn_cell(mouse_pos):
+    result = screen_to_logical(mouse_pos[0], mouse_pos[1])
+    if result is None:
+        return None
+    row, col = result
+    if row % 2 == 0 and col % 2 == 0:
+        return row, col
+    return None
+
+
+def get_hovered_wall_center(mouse_pos, orientation):
+    result = screen_to_logical(mouse_pos[0], mouse_pos[1])
+    if result is None:
+        return None
+
+    row, col = result
+
+    if row % 2 == 0:
+        row = max(1, row - 1)
+    if col % 2 == 0:
+        col = max(1, col - 1)
+
+    if not (1 <= row <= 15 and 1 <= col <= 15):
+        return None
+
+    return row, col
+
+
+def is_wall_legal_preview(game, wall_row, wall_col, orientation):
+    if orientation == "H":
+        cells = [(wall_row, wall_col - 1), (wall_row, wall_col), (wall_row, wall_col + 1)]
+    else:
+        cells = [(wall_row - 1, wall_col), (wall_row, wall_col), (wall_row + 1, wall_col)]
+
+    for (r, c) in cells:
+        if not (0 <= r < 17 and 0 <= c < 17):
+            return False
+        if game.board[r][c] == 1:
+            return False
+
+    walls_left = game.p1_walls if game.current_turn == 1 else game.p2_walls
+    return walls_left > 0
+
+def _lighten(colour, amount):
+    return tuple(min(255, c + amount) for c in colour)
+
+
+def make_fonts():
+    font_big = pygame.font.SysFont("Arial", FONT_BIG, bold=True)
+    font_med = pygame.font.SysFont("Arial", FONT_MED, bold=False)
+    font_small = pygame.font.SysFont("Arial", FONT_SMALL, bold=False)
+    return font_big, font_med, font_small
+
+
+def get_ai_move(game, difficulty, ai):
+    move = ai.get_best_move(game, difficulty=difficulty)
+    if move is None:
+        return ("move", *game.get_legal_pawn_moves(2)[0])
+
+    kind, payload = move
+    if kind == "pawn":
+        r, c = payload
+        return ("move", r, c)
+
+    r, c, orient = payload
+    return ("wall", r, c, orient)
