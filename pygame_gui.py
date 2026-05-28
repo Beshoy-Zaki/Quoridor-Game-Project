@@ -189,3 +189,176 @@ def draw_ghost_wall(surface, wall_row, wall_col, orientation, is_legal):
         pygame.draw.rect(ghost_surf, colour, pygame.Rect(sx, sy, w, h), border_radius=2)
 
     surface.blit(ghost_surf, (0, 0))
+def draw_sidebar(surface, game, mode, difficulty, error_msg, wall_orient, fonts):
+    font_big, font_med, font_small = fonts
+
+    sidebar_rect = pygame.Rect(MARGIN * 2 + BOARD_PX, 0, SIDEBAR_W, WIN_H)
+    pygame.draw.rect(surface, C_SIDEBAR_BG, sidebar_rect)
+
+    x = MARGIN * 2 + BOARD_PX + 15
+    y = 18
+
+    title = font_big.render("QUORIDOR", True, C_TEXT_MAIN)
+    surface.blit(title, (x, y))
+    y += title.get_height() + 4
+
+    mode_str = "Human vs AI" if mode == "single" else "Human vs Human"
+    mode_label = font_small.render(mode_str, True, C_TEXT_DIM)
+    surface.blit(mode_label, (x, y))
+    y += mode_label.get_height() + 18
+
+    pygame.draw.line(surface, C_TEXT_DIM, (x, y), (x + SIDEBAR_W - 30, y))
+    y += 12
+
+    if not game.game_over:
+        bar_colour = C_TURN_BAR_P1 if game.current_turn == 1 else C_TURN_BAR_P2
+        bar_rect = pygame.Rect(x - 15, y, SIDEBAR_W - 5, 36)
+        pygame.draw.rect(surface, bar_colour, bar_rect, border_radius=4)
+
+        turn_text = f"PLAYER {game.current_turn}'S TURN"
+        turn_colour = C_P1_TEXT if game.current_turn == 1 else C_P2_TEXT
+        turn_label = font_med.render(turn_text, True, turn_colour)
+        surface.blit(turn_label, (x, y + 8))
+        y += 46
+    else:
+        y += 10
+
+    for pid, pawn_colour, text_colour in [(1, C_P1, C_P1_TEXT), (2, C_P2, C_P2_TEXT)]:
+        walls_left = game.p1_walls if pid == 1 else game.p2_walls
+        pos = game.p1_pos if pid == 1 else game.p2_pos
+
+        pygame.draw.circle(surface, pawn_colour, (x + 8, y + 10), 8)
+
+        player_label = font_med.render(f"     Player {pid}", True, text_colour)
+        surface.blit(player_label, (x, y))
+        y += player_label.get_height() + 2
+
+        walls_label = font_small.render(f"    Walls: {walls_left}", True, C_TEXT_MAIN)
+        surface.blit(walls_label, (x, y))
+        y += walls_label.get_height() + 2
+
+        pos_label = font_small.render(f"    Pos: ({pos[0]//2}, {pos[1]//2})", True, C_TEXT_DIM)
+        surface.blit(pos_label, (x, y))
+        y += pos_label.get_height() + 12
+
+    pygame.draw.line(surface, C_TEXT_DIM, (x, y), (x + SIDEBAR_W - 30, y))
+    y += 12
+
+    mode_colour = C_WALL_MODE if wall_orient else C_TEXT_DIM
+    wmode_label = font_small.render("WALL MODE: " + ("ON" if wall_orient else "OFF"), True, mode_colour)
+    surface.blit(wmode_label, (x, y))
+    y += wmode_label.get_height() + 4
+
+    if wall_orient:
+        orient_label = font_small.render(f"Orientation: {wall_orient}", True, C_WALL_MODE)
+        surface.blit(orient_label, (x, y))
+    y += font_small.get_height() + 12
+
+    pygame.draw.line(surface, C_TEXT_DIM, (x, y), (x + SIDEBAR_W - 30, y))
+    y += 10
+
+    controls_title = font_small.render("CONTROLS", True, C_TEXT_DIM)
+    surface.blit(controls_title, (x, y))
+    y += controls_title.get_height() + 6
+
+    controls = [
+        "Click cell: move",
+        "W key: walls",
+        "H/V: orient",
+        "Click: place",
+        "Ctrl+Z: undo",
+        "Ctrl+Y: redo",
+        "R: restart",
+        "ESC: menu",
+    ]
+
+    col_width = (SIDEBAR_W - 30) // 2
+    line_h = font_small.get_height() + 4
+    for idx, line in enumerate(controls):
+        col = idx % 2
+        row = idx // 2
+        lbl = font_small.render(line, True, C_TEXT_DIM)
+        surface.blit(lbl, (x + col * col_width, y + row * line_h))
+
+    y += ((len(controls) + 1) // 2) * line_h + 8
+
+    if mode == "single" and difficulty:
+        pygame.draw.line(surface, C_TEXT_DIM, (x, y), (x + SIDEBAR_W - 30, y))
+        y += 10
+        diff_label = font_small.render(f"AI: {difficulty.upper()}", True, C_P2_TEXT)
+        surface.blit(diff_label, (x, y))
+        y += diff_label.get_height() + 8
+
+    if error_msg:
+        pygame.draw.line(surface, C_TEXT_DIM, (x, y), (x + SIDEBAR_W - 30, y))
+        y += 8
+        err_label = font_small.render("! " + error_msg, True, C_ERROR_TEXT)
+        surface.blit(err_label, (x, y))
+        y += err_label.get_height() + 6
+
+    if game.game_over:
+        button_top = WIN_H - 144
+        win_y = min(y + 12, button_top - 70)
+        pygame.draw.line(surface, C_TEXT_DIM, (x, win_y - 12), (x + SIDEBAR_W - 30, win_y - 12))
+        win_bg = pygame.Rect(x - 15, win_y, SIDEBAR_W - 5, 50)
+        pygame.draw.rect(surface, C_WIN_BG, win_bg, border_radius=6)
+        win_txt = font_big.render(f"P{game.winner} WINS!", True, C_WIN_TEXT)
+        surface.blit(win_txt, (x, win_y + 12))
+
+    mouse_pos = pygame.mouse.get_pos()
+
+    undo_rect = pygame.Rect(x - 5, WIN_H - 144, (SIDEBAR_W - 24) // 2, 32)
+    redo_rect = pygame.Rect(undo_rect.right + 4, WIN_H - 144, (SIDEBAR_W - 24) // 2, 32)
+    restart_rect = pygame.Rect(x - 5, WIN_H - 96, SIDEBAR_W - 20, 38)
+
+    undo_colour = C_BTN_HOVER if undo_rect.collidepoint(mouse_pos) else C_BTN_BG
+    redo_colour = C_BTN_HOVER if redo_rect.collidepoint(mouse_pos) else C_BTN_BG
+    restart_colour = C_BTN_HOVER if restart_rect.collidepoint(mouse_pos) else C_BTN_BG
+
+    pygame.draw.rect(surface, undo_colour, undo_rect, border_radius=6)
+    pygame.draw.rect(surface, redo_colour, redo_rect, border_radius=6)
+    pygame.draw.rect(surface, restart_colour, restart_rect, border_radius=6)
+
+    undo_txt = font_small.render("UNDO", True, C_BTN_TEXT)
+    redo_txt = font_small.render("REDO", True, C_BTN_TEXT)
+    restart_txt = font_med.render("RESTART  [R]", True, C_BTN_TEXT)
+
+    surface.blit(
+        undo_txt,
+        (
+            undo_rect.x + (undo_rect.w - undo_txt.get_width()) // 2,
+            undo_rect.y + (undo_rect.h - undo_txt.get_height()) // 2,
+        ),
+    )
+    surface.blit(
+        redo_txt,
+        (
+            redo_rect.x + (redo_rect.w - redo_txt.get_width()) // 2,
+            redo_rect.y + (redo_rect.h - redo_txt.get_height()) // 2,
+        ),
+    )
+    surface.blit(
+        restart_txt,
+        (
+            restart_rect.x + (restart_rect.w - restart_txt.get_width()) // 2,
+            restart_rect.y + (restart_rect.h - restart_txt.get_height()) // 2,
+        ),
+    )
+
+    return {
+        "undo": undo_rect,
+        "redo": redo_rect,
+        "restart": restart_rect,
+    }
+
+
+def draw_goal_lines(surface):
+    sx0, sy0 = logical_to_screen(0, 0)
+    sx1, _ = logical_to_screen(0, 16)
+    goal_top_rect = pygame.Rect(sx0 - 3, sy0 - 3, sx1 - sx0 + CELL_SIZE + 6, 4)
+    pygame.draw.rect(surface, C_P1, goal_top_rect, border_radius=2)
+
+    sx0, sy0 = logical_to_screen(16, 0)
+    sx1, _ = logical_to_screen(16, 16)
+    goal_bot_rect = pygame.Rect(sx0 - 3, sy0 + CELL_SIZE - 1, sx1 - sx0 + CELL_SIZE + 6, 4)
+    pygame.draw.rect(surface, C_P2, goal_bot_rect, border_radius=2)
