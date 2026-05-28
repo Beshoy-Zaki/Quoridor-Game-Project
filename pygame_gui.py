@@ -168,3 +168,24 @@ def draw_pawn(surface, row, col, colour, label):
     font = pygame.font.SysFont("Arial", FONT_MED, bold=True)
     txt = font.render(label, True, (255, 255, 255))
     surface.blit(txt, (cx - txt.get_width() // 2, cy - txt.get_height() // 2))
+
+
+def draw_ghost_wall(surface, wall_row, wall_col, orientation, is_legal):
+    if orientation == "H":
+        cells = [(wall_row, wall_col - 1), (wall_row, wall_col), (wall_row, wall_col + 1)]
+    else:
+        cells = [(wall_row - 1, wall_col), (wall_row, wall_col), (wall_row + 1, wall_col)]
+
+    colour = C_WALL_GHOST if is_legal else C_WALL_BAD
+
+    ghost_surf = pygame.Surface((WIN_W, WIN_H), pygame.SRCALPHA)
+
+    for (r, c) in cells:
+        if not (0 <= r < 17 and 0 <= c < 17):
+            continue
+        sx, sy = logical_to_screen(r, c)
+        w = logical_size(c)
+        h = logical_size(r)
+        pygame.draw.rect(ghost_surf, colour, pygame.Rect(sx, sy, w, h), border_radius=2)
+
+    surface.blit(ghost_surf, (0, 0))
