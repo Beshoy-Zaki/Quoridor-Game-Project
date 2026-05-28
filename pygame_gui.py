@@ -290,11 +290,7 @@ def draw_sidebar(surface, game, mode, difficulty, error_msg, wall_orient, fonts)
         y += diff_label.get_height() + 8
 
     if error_msg:
-        pygame.draw.line(surface, C_TEXT_DIM, (x, y), (x + SIDEBAR_W - 30, y))
-        y += 8
-        err_label = font_small.render("! " + error_msg, True, C_ERROR_TEXT)
-        surface.blit(err_label, (x, y))
-        y += err_label.get_height() + 6
+        y += 6
 
     if game.game_over:
         button_top = WIN_H - 144
@@ -717,7 +713,30 @@ def _render_frame(
         wall_orient if wall_mode else None,
         fonts,
     )
-
+    
+    if error_msg:
+        msg = fonts[1].render(error_msg, True, C_ERROR_TEXT)
+        padding_x = 16
+        padding_y = 10
+        box_w = msg.get_width() + padding_x * 2
+        box_h = msg.get_height() + padding_y * 2
+        center_x = MARGIN + BOARD_PX // 2
+        center_y = MARGIN + BOARD_PX // 2
+        box_rect = pygame.Rect(
+            center_x - box_w // 2,
+            center_y - box_h // 2,
+            box_w,
+            box_h,
+        )
+        pygame.draw.rect(screen, (20, 20, 24), box_rect, border_radius=8)
+        pygame.draw.rect(screen, C_ERROR_TEXT, box_rect, width=2, border_radius=8)
+        screen.blit(
+            msg,
+            (
+                box_rect.x + padding_x,
+                box_rect.y + padding_y,
+            ),
+        )
 
 def main():
     pygame.init()
