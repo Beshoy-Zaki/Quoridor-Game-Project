@@ -260,3 +260,68 @@ class QuoridorAI:
             game.board[rr][cc] = 0
 
         return has_path
+
+    def _apply_move(self, game, move):
+        kind, payload = move
+        if kind == "pawn":
+            game.move_pawn(*payload)
+        elif kind == "wall":
+            r, c, orient = payload
+            game.place_wall(r, c, orient)
+
+    def _evaluate_state(self, game, ai_id, difficulty="medium"):
+        if game.game_over:
+            return 10000 if game.winner == ai_id else -10000
+
+        ai_pos  = game.p1_pos if ai_id == 1 else game.p2_pos
+        opp_pos = game.p2_pos if ai_id == 1 else game.p1_pos
+        ai_goal  = game.p1_goal_row if ai_id == 1 else game.p2_goal_row
+        opp_goal = game.p2_goal_row if ai_id == 1 else game.p1_goal_row
+
+        ai_dist  = self._shortest_path_len(game.board, ai_pos,  ai_goal)
+        opp_dist = self._shortest_path_len(game.board, opp_pos, opp_goal)
+
+        ai_walls  = game.p1_walls if ai_id == 1 else game.p2_walls
+        opp_walls = game.p2_walls if ai_id == 1 else game.p1_walls
+
+        center_col   = 8
+        center_bonus = 1 - (abs(ai_pos[1] - center_col) / 16)
+
+        score = (
+            (opp_dist - ai_dist) * 10
+            + (ai_walls - opp_walls) * 2
+            + center_bonus
+        )
+        repeat_count = self._position_history.count((ai_pos, opp_pos))
+        if repeat_count > 0:
+            score -= repeat_count * 4   # 4 pts per repeat visit
+
+        return score
+
+    def _order_moves(self, game, moves, ai_id):
+        scored = []
+        for move in moves:
+            cloned = copy.deepcopy(game)
+            self._apply_move(cloned, move)
+            score = self._evaluate_state(cloned, ai_id)
+            scored.append((score, move))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [m for _, m in scored]
+    def _shortest_path_len(self, board, start, goal_row):
+        queue   = [(start, 0)]
+        visited = {start}
+        while queue:
+            (r, c), d = queue.pop(0)
+            if r == goal_row:
+                return d
+            for dr, dc, wr, wc in [(-2, 0, -1, 0), (2, 0, 1, 0), (0, -2, 0, -1), (0, 2, 0, 1)]:
+                tr, tc, w_r, w_c = r + dr, c + dc, r + wr, c + wc
+                if (
+                    0 <= tr < 17
+                    and 0 <= tc < 17
+                    and board[w_r][w_c] == 0
+                    and (tr, tc) not in visited
+                ):
+                    visited.add((tr, tc))
+                    queue.append(((tr, tc), d + 1))
+        return 99
